@@ -6,14 +6,15 @@ from rest_framework.views import APIView
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import api_view
-
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
 # from .models import
 from .serializers import *
+from .permissions import IsDoctor
 from . models import Doctor, Specialization
-
+from appointment.models import Appointment
+from appointment.serializers import AppointmentSerializer
 User = get_user_model()
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -21,7 +22,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
         token = super().get_token(user)
         user_data = UserSerializer(user, context={"request": None}).data
-        token["user"] = user_data
+        token["user"] = user_data  
         return token
 
 @api_view(["GET"])
@@ -93,3 +94,58 @@ class DoctorSearchView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter ]
     search_fields = ["user__first_name", "user__last_name","name" ,"specialization__specialization"]
+
+#Doctor Profile 
+class DoctorsProfileiew(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsDoctor]
+
+    def get(self, request):
+        doctor = get_object_or_404(Doctor, user=request.user)
+        serializer = DoctorSerializer(doctor ,context={"request" : request})
+        return Response(serializer.data , status=status.HTTP_200_OK)
+
+    def put(self, request):
+        print(request.data)
+        pass
+
+#doctor Patients
+class DoctorPatientsView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsDoctor]
+
+    def get(self, request , patient_id=None):
+        
+        if patient_id:
+            patient = get_object_or_404(User, id=patient_id)
+            appointment = get_object_or_404(Appointment, patient=patient)
+            serializer = DoctorPatientsSerializer(appointment, content={"request" : request}).data
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        appointment = Appointment.objects.all()
+        serializer = DoctorPatientsSerializer(appointment, many=True, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class DoctorPatientsSearchView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsDoctor]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ["patient__first_name", "patient__last_name"]
+
+    def get(self, request, *args, **kwargs):
+        doctor = get_object_or_404(Doctor, user=request.user)
+        appointments = Appointment.objects.filter(doctor=doctor).distinct()
+        filtered_appointments = self.filter_queryset(appointments)
+        serializer = DoctorPatientsSerializer(filtered_appointments, many=True, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def filter_queryset(self, queryset):
+        for backend in list(self.filter_backends):
+            queryset = backend().filter_queryset(self.request, queryset, self)
+        return queryset
+
+class DoctorDataView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsDoctor]
+    
+    def get(self, request):
+            doctor = get_object_or_404(Doctor, user=request.user)
+            appointments  = get_object_or_404(Appointment, doctor=doctor)
+            serializer = DoctorDataSerializer(appointments, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_200_OK)

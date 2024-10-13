@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "appointment",
     "healthtips",
     "pharmacy",
+    "healthrecord",
 
     "rest_framework",
     #"corsheaders",

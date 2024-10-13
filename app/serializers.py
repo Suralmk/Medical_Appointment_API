@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import ValidationError, AuthenticationFailed
 from . models import Doctor, Specialization
+from appointment.models import Appointment
 User = get_user_model()
 
 class RegisterSerializer(serializers.Serializer):
@@ -94,4 +95,24 @@ class SpecializationSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class DoctorSearchSerializer(serializers.Serializer):
+    pass
+
+
+#Doctor Patients serializer
+
+class DoctorPatientsSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    class Meta:
+        model = Appointment
+        fields = "__all__"
+    
+    def get_name(self, obj):
+        return obj.patient.get_full_name()
+
+class DoctorPatientsSearchView(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = "__all__"
+
+class DoctorDataSerializer(serializers.Serializer):
     pass

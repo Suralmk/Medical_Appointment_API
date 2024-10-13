@@ -165,6 +165,3 @@ class Doctor(models.Model):
 
     def get_absolute_url(self):
         return reverse('doctors', args=[str(self.user.id)])
-
-
-
